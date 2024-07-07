@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net"
 )
@@ -11,6 +12,8 @@ func main() {
 		log.Fatal(err)
 	}
 	defer udpServer.Close()
+
+	fmt.Println("UDP KV store server listening on port 8080...")
 
 	db := map[string]string{}
 
@@ -28,6 +31,8 @@ func main() {
 func response(udpServer net.PacketConn, addr net.Addr, buf []byte, db *map[string]string) {
 	message := string(buf)
 
+	fmt.Println("message:", message)
+
 	equalIndex := -1
 	for i, c := range message {
 		if c == '=' {
@@ -40,11 +45,13 @@ func response(udpServer net.PacketConn, addr net.Addr, buf []byte, db *map[strin
 		key := message[:equalIndex]
 		value := message[equalIndex+1:]
 		(*db)[key] = value
+		fmt.Println("inserted:", key, "=", (*db)[key])
 	} else if message == "version" {
 		udpServer.WriteTo([]byte("version=1"), addr)
 	} else {
 		key := message
 		value := (*db)[key]
+		fmt.Println("retrieved:", key, "=", value)
 		udpServer.WriteTo([]byte(key+"="+value), addr)
 	}
 
