@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sync"
 )
 
 func main() {
@@ -17,18 +18,20 @@ func main() {
 
 	db := map[string]string{}
 
+	var mu sync.Mutex
+
 	for {
 		buf := make([]byte, 1024)
 		n, addr, err := udpServer.ReadFrom(buf)
 		if err != nil {
 			continue
 		}
-		go response(udpServer, addr, buf[:n], &db)
+		go response(udpServer, addr, buf[:n], db, &mu)
 	}
 
 }
 
-func response(udpServer net.PacketConn, addr net.Addr, buf []byte, db *map[string]string) {
+func response(udpServer net.PacketConn, addr net.Addr, buf []byte, db map[string]string, mu *sync.Mutex) {
 	message := string(buf)
 
 	fmt.Println("message:", message)
@@ -41,16 +44,19 @@ func response(udpServer net.PacketConn, addr net.Addr, buf []byte, db *map[strin
 		}
 	}
 
+	mu.Lock()
+	defer mu.Unlock()
+
 	if equalIndex >= 0 {
 		key := message[:equalIndex]
 		value := message[equalIndex+1:]
-		(*db)[key] = value
-		fmt.Println("inserted:", key, "=", (*db)[key])
+		db[key] = value
+		fmt.Println("inserted:", key, "=", db[key])
 	} else if message == "version" {
 		udpServer.WriteTo([]byte("version=1"), addr)
 	} else {
 		key := message
-		value := (*db)[key]
+		value := db[key]
 		fmt.Println("retrieved:", key, "=", value)
 		udpServer.WriteTo([]byte(key+"="+value), addr)
 	}
