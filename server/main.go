@@ -4,7 +4,13 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"sync"
 )
+
+type request struct {
+	addr net.Addr
+	data []byte
+}
 
 func main() {
 	udpServer, err := net.ListenPacket("udp", ":8080")
@@ -17,7 +23,14 @@ func main() {
 
 	db := map[string]string{}
 
-	ch := make(chan int)
+	var mu sync.Mutex
+
+	ch := make(chan request)
+
+	// for i := 0; i < 5; i++ {
+	// 	go worker(udpServer, db, &mu, ch)
+	// }
+	go worker(udpServer, db, &mu, ch) // single worker thread to process requests sequentially
 
 	for {
 		buf := make([]byte, 1024)
@@ -25,13 +38,18 @@ func main() {
 		if err != nil {
 			continue
 		}
-		go response(udpServer, addr, buf[:n], db, ch)
-		<-ch
+		// go response(udpServer, addr, buf[:n], db, ch)
+		ch <- request{addr: addr, data: buf[:n]}
 	}
-
 }
 
-func response(udpServer net.PacketConn, addr net.Addr, buf []byte, db map[string]string, ch chan int) {
+func worker(udpServer net.PacketConn, db map[string]string, mu *sync.Mutex, ch chan request) {
+	for request := range ch {
+		response(udpServer, request.addr, request.data, db, mu)
+	}
+}
+
+func response(udpServer net.PacketConn, addr net.Addr, buf []byte, db map[string]string, mu *sync.Mutex) {
 	message := string(buf)
 
 	fmt.Println("message:", message)
@@ -43,6 +61,10 @@ func response(udpServer net.PacketConn, addr net.Addr, buf []byte, db map[string
 			break
 		}
 	}
+
+	// not need for locking if single threaded
+	// mu.Lock()
+	// defer mu.Unlock()
 
 	if equalIndex >= 0 {
 		key := message[:equalIndex]
@@ -57,5 +79,4 @@ func response(udpServer net.PacketConn, addr net.Addr, buf []byte, db map[string
 		fmt.Println("retrieved:", key, "=", value)
 		udpServer.WriteTo([]byte(key+"="+value), addr)
 	}
-	ch <- 1
 }
