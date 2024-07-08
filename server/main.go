@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"sync"
 )
 
 func main() {
@@ -18,7 +17,7 @@ func main() {
 
 	db := map[string]string{}
 
-	var mu sync.Mutex
+	ch := make(chan int)
 
 	for {
 		buf := make([]byte, 1024)
@@ -26,12 +25,13 @@ func main() {
 		if err != nil {
 			continue
 		}
-		go response(udpServer, addr, buf[:n], db, &mu)
+		go response(udpServer, addr, buf[:n], db, ch)
+		<-ch
 	}
 
 }
 
-func response(udpServer net.PacketConn, addr net.Addr, buf []byte, db map[string]string, mu *sync.Mutex) {
+func response(udpServer net.PacketConn, addr net.Addr, buf []byte, db map[string]string, ch chan int) {
 	message := string(buf)
 
 	fmt.Println("message:", message)
@@ -43,9 +43,6 @@ func response(udpServer net.PacketConn, addr net.Addr, buf []byte, db map[string
 			break
 		}
 	}
-
-	mu.Lock()
-	defer mu.Unlock()
 
 	if equalIndex >= 0 {
 		key := message[:equalIndex]
@@ -60,5 +57,5 @@ func response(udpServer net.PacketConn, addr net.Addr, buf []byte, db map[string
 		fmt.Println("retrieved:", key, "=", value)
 		udpServer.WriteTo([]byte(key+"="+value), addr)
 	}
-
+	ch <- 1
 }

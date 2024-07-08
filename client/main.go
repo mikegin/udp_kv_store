@@ -3,7 +3,6 @@ package main
 import (
 	"net"
 	"os"
-	"time"
 )
 
 func main() {
@@ -29,7 +28,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	time.Sleep(1 * time.Second)
+	// time.Sleep(1 * time.Second)
 
 	// buffer to get data
 	received := make([]byte, 1024)
@@ -40,7 +39,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	time.Sleep(1 * time.Second)
+	// time.Sleep(1 * time.Second)
 
 	_, err = conn.Write([]byte("a=2"))
 	if err != nil {
@@ -48,7 +47,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	time.Sleep(1 * time.Second)
+	// time.Sleep(1 * time.Second)
 
 	_, err = conn.Write([]byte("b"))
 	if err != nil {
@@ -56,7 +55,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	time.Sleep(1 * time.Second)
+	// time.Sleep(1 * time.Second)
 
 	_, err = conn.Read(received)
 	if err != nil {
@@ -80,7 +79,7 @@ func main() {
 
 	println(string(received))
 
-	time.Sleep(1 * time.Second)
+	// time.Sleep(1 * time.Second)
 
 	_, err = conn.Write([]byte("version"))
 	if err != nil {
